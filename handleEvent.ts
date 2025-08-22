@@ -32,13 +32,18 @@ export async function handleEvent(event: any, client: InstanceType<typeof Messag
             return Promise.resolve(null);
         }
 
+        console.log("User message history:", history);
+        console.log("Current user message:", text);
+
         const gptReply = await createReply(history, text);
 
         if (event.source.type === "group" || event.source.type === "room") {
-            if (Math.random() < 0.3) {
+            if (Math.random() < 0.6) {
                 return;
             }
         }
+
+        console.log("GPT reply:", gptReply);
 
         return client.replyMessage({
             replyToken: event.replyToken,

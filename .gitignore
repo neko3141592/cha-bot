@@ -4,14 +4,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# TypeScript
 dist/
 *.tsbuildinfo
 
-# 環境変数
+# Env
 .env
 
-# OSごとの不要ファイル
+# macOS
 .DS_Store
 
 # IDE
