@@ -1,64 +1,96 @@
-import { messagingApi } from '@line/bot-sdk';
-const { MessagingApiClient } = messagingApi;
-import { Schema, model } from "mongoose";
+import { messagingApi} from '@line/bot-sdk';
 import { createReply } from "./createReply.ts";
+import { UserMessage, GroupMessage } from './models/message.ts';
 
-const messageSchema = new Schema({
-    userId: String,
-    message: String,
-    createdAt: { type: Date, default: Date.now }
-});
+const { MessagingApiClient } = messagingApi;
 
-const Message = model("Message", messageSchema);
+
+let power: boolean = true;
+
+const saruReplies: string[] = [
+    "うきうき", "キーキー", "ウキッ", "ウキキー！", "ウホッ", "ウキウキ", "ウホホホ",
+];
+
+const getMessageHistory = async (model: any, id: string, limit: number) => {
+    const messages = await model.find({ [model.modelName === "UserMessage" ? "userId" : "groupId"]: id })
+        .sort({ createdAt: -1 })
+        .limit(limit);
+    return messages.reverse().flatMap((msg: any) => typeof msg.message === 'string' ? msg.message : []);
+}
 
 export async function handleEvent(event: any, client: InstanceType<typeof MessagingApiClient>) {
     try {
         if (event.type !== "message" || event.message.type !== "text") {
             return Promise.resolve(null);
         }
-        const userId: string = event.source.userId;
+
+        const messageLimit = 5;
         const text: string = event.message.text;
+        const userId: string = event.source.userId;
 
-        const messageDoc = new Message({ userId, message: text });
-        await messageDoc.save();
+        if (text === "toggle") {
+            const reply = togglePower(event);
+            return client.replyMessage({
+                replyToken: event.replyToken,
+                messages: [{ type: 'text', text: reply }],
+            });
+        }
 
-        const messages = await Message.find({ userId })
-            .sort({ createdAt: -1 })
-            .limit(5);
-
-        const history = messages.reverse().map((msg) => msg.message);
-
-        if (!history || history.length === 0) {
+        if (!power) {
             return Promise.resolve(null);
         }
 
-        console.log("User message history:", history);
-        console.log("Current user message:", text);
+        let history: string[] = [];
+        if (event.source.type === "user") {
+            await new UserMessage({ userId, message: text }).save();
+            history = await getMessageHistory(UserMessage, userId, messageLimit);
+        } else if (event.source.type === "group" || event.source.type === "room") {
+            const groupId: string = event.source.groupId || event.source.roomId;
+            await new GroupMessage({ groupId, message: text }).save();
+            history = await getMessageHistory(GroupMessage, groupId, messageLimit);
+        }
+
+        if (!history.length) return Promise.resolve(null);
 
         const gptReply = await createReply(history, text);
-
-        if (event.source.type === "group" || event.source.type === "room") {
-            if (Math.random() < 0.6) {
-                return;
-            }
+        if (!gptReply || !probabilitySolver(event)) {
+            return Promise.resolve(null);
         }
 
         console.log("GPT reply:", gptReply);
-
         return client.replyMessage({
             replyToken: event.replyToken,
             messages: [{ type: 'text', text: gptReply }],
         });
 
     } catch (error) {
-        console.error("handleEvent error:", error);
-
-        if (event.replyToken) {
-            return client.replyMessage({
-                replyToken: event.replyToken,
-                messages: [{ type: 'text', text: `エラーが発生しました。もう一度お試しください。` }],
-            });
-        }
-        return Promise.resolve(null);
+        return handleError(event, error, client);
     }
+}
+
+const handleError = (event: any, error: any, client: InstanceType<typeof MessagingApiClient>) => {
+    console.error("handleEvent error:", error);
+    if (event.replyToken) {
+        return client.replyMessage({
+            replyToken: event.replyToken,
+            messages: [{ type: 'text', text: `エラーが発生しました。もう一度お試しください。` }],
+        });
+    }
+    return Promise.resolve(null);
+}
+
+const probabilitySolver = (event: any): boolean => {
+    if (event.message?.quotedMessageId || event.message?.mention) {
+        return true;
+    }
+    if (event.source.type === "group" || event.source.type === "room") {
+        return Math.random() < 0.25; 
+    }
+    return true;
+}
+
+const togglePower = (event: any): string => {
+    if (event.source.userId !== process.env.ADMIN) return power ? "Power is ON" : "Power is OFF";
+    power = !power;
+    return power ? "Power is ON" : "Power is OFF"; 
 }
