@@ -7,10 +7,6 @@ const { MessagingApiClient } = messagingApi;
 
 let power: boolean = true;
 
-const saruReplies: string[] = [
-    "うきうき", "キーキー", "ウキッ", "ウキキー！", "ウホッ", "ウキウキ", "ウホホホ",
-];
-
 const getMessageHistory = async (model: any, id: string, limit: number) => {
     const messages = await model.find({ [model.modelName === "UserMessage" ? "userId" : "groupId"]: id })
         .sort({ createdAt: -1 })
