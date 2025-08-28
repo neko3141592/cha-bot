@@ -16,7 +16,7 @@ export async function createReply(history: string[], current: string): Promise<s
     const allMessages: ChatCompletionMessageParam[] = [
         systemMessage,
         ...history.map((message) => ({ role: "user", content: `Past conversations: ${message}` } as ChatCompletionMessageParam)),
-        { role: "user", content: `This conversation: ${current}` } as ChatCompletionMessageParam
+        { role: "user", content: `${current}` } as ChatCompletionMessageParam
     ];
     const response = await openai.chat.completions.create({
         model: "gpt-4",

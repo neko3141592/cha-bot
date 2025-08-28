@@ -1,6 +1,8 @@
 import { messagingApi} from '@line/bot-sdk';
 import { createReply } from "./createReply.ts";
 import { UserMessage, GroupMessage } from './models/message.ts';
+import dotenv from "dotenv";
+dotenv.config();
 
 const { MessagingApiClient } = messagingApi;
 
@@ -35,6 +37,14 @@ export async function handleEvent(event: any, client: InstanceType<typeof Messag
         if (!power) {
             return Promise.resolve(null);
         }
+        console.log(`Received message: ${text} from userId: ${userId}`);
+
+        if (userId === process.env.SARU) {
+            return client.replyMessage({
+                replyToken: event.replyToken,
+                messages: [{ type: 'text', text: 'おさるさんはしずかにしようね' }],
+            });
+        }
 
         let history: string[] = [];
         if (event.source.type === "user") {
@@ -45,8 +55,6 @@ export async function handleEvent(event: any, client: InstanceType<typeof Messag
             await new GroupMessage({ groupId, message: text }).save();
             history = await getMessageHistory(GroupMessage, groupId, messageLimit);
         }
-
-        if (!history.length) return Promise.resolve(null);
 
         const gptReply = await createReply(history, text);
         if (!gptReply || !probabilitySolver(event)) {
