@@ -5,6 +5,16 @@ import { messagingApi, middleware } from '@line/bot-sdk';
 import type { WebhookEvent } from '@line/bot-sdk';
 import { handleEvent } from "./handleEvent.ts";
 import mongoose from "mongoose";
+import * as fs from 'fs';
+
+const logStream = fs.createWriteStream('app.log', { flags: 'a' });
+
+const originalLog = console.log;
+console.log = function (...args) {
+  const msg = args.map(String).join(' ');
+  logStream.write(msg + '\n');
+  originalLog.apply(console, args);
+};
 
 const { MessagingApiClient } = messagingApi;
 
