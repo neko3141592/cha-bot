@@ -19,3 +19,6 @@ dist/
 
 # Logs
 app.log
+
+# MongoDB
+mongo-data/mongo-data/
