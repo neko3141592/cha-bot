@@ -18,7 +18,7 @@ console.log = function (...args) {
 
 const { MessagingApiClient } = messagingApi;
 
-const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/linebot";
+const uri = "mongodb://mongodb:27017/linebot";
 mongoose.connect(uri).then(() => {
     console.log("Connected to MongoDB");
 });
